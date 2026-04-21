@@ -9,64 +9,57 @@
   :root { --card: rgba(10, 10, 10, 0.9); --border: #fff; --text: #fff; --muted: #aaa; --accent: #00ff88; --danger: #ff4444; }
   body { 
     background: linear-gradient(rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.85)), url('bg.jpg') center/cover fixed;
-    color: var(--text); font-family: 'Cairo'; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem;
+    color: var(--text); font-family: 'Cairo'; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0;
   }
   .screen { display: none; width: 100%; max-width: 420px; flex-direction: column; align-items: center; }
   .screen.visible { display: flex; animation: fadeIn 0.3s ease; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   .card { background: var(--card); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; padding: 2rem; width: 100%; text-align: center; backdrop-filter: blur(5px); }
   .pw-wrap { position: relative; width: 100%; margin-bottom: 1rem; }
-  input[type="password"], input[type="text"] { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; color: #fff; font-family: 'Cairo'; text-align: center; font-size: 1.2rem; outline: none; }
-  .eye-btn { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; }
-  .btn { width: 100%; padding: 1rem; border-radius: 10px; font-weight: 700; cursor: pointer; border: 1px solid var(--border); font-size: 1rem; margin-top: 0.5rem; }
+  input[type="password"], input[type="text"] { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; color: #fff; text-align: center; font-size: 1.2rem; outline: none; }
+  .eye-btn { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.2rem; }
+  .btn { width: 100%; padding: 1rem; border-radius: 10px; font-weight: 700; cursor: pointer; border: 1px solid var(--border); margin-top: 0.5rem; }
   .btn-white { background: #fff; color: #000; }
-  .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
   .timer { font-size: 3.5rem; font-weight: 900; margin: 1rem 0; direction: ltr; }
-  .wallet-box { border: 1px dashed var(--accent); background: rgba(0,255,136,0.05); padding: 1rem; border-radius: 10px; margin: 1rem 0; }
-  .upload-box { border: 1px solid #333; padding: 1rem; border-radius: 10px; margin-top: 1rem; background: rgba(0,0,0,0.6); }
   .logout-btn { position: absolute; top: 1rem; left: 1rem; padding: 0.5rem 1rem; background: rgba(0,0,0,0.8); border: 1px solid #fff; border-radius: 20px; color: #fff; cursor: pointer; }
+  .admin-card { border: 1px solid #333; padding: 1rem; border-radius: 10px; margin-top: 1rem; text-align: right; }
 </style>
 </head>
 <body>
 
 <div class="screen visible" id="s-login">
   <h1>GAME STATION</h1>
-  <p style="color:var(--muted); margin-bottom:1.5rem;">أدخل كلمة المرور للمتابعة</p>
   <div class="card">
     <div class="pw-wrap">
-      <input type="password" id="pw" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
-      <button class="eye-btn" onclick="toggleEye()" id="eye-icon">👁</button>
+      <input type="password" id="pw" placeholder="كلمة المرور">
+      <button class="eye-btn" onclick="toggleEye()">👁</button>
     </div>
-    <button class="btn btn-white" id="login-btn" onclick="doLogin()">دخول</button>
+    <button class="btn btn-white" onclick="doLogin()">دخول</button>
   </div>
 </div>
 
 <div class="screen" id="s-player">
-  <button class="logout-btn" onclick="logout()">تسجيل خروج</button>
-  <h1 id="player-name">اللاعب</h1>
-  <p id="player-status-text" style="color:var(--muted); margin-bottom:1rem;">جاري المزامنة...</p>
+  <button class="logout-btn" onclick="location.reload()">خروج</button>
+  <h1 id="p-name">اللاعب</h1>
   <div class="card">
-    <div class="timer" id="player-timer">00:00:00</div>
-    <div id="view-idle" style="display:none;"><button class="btn btn-white" onclick="playerAction('start', false)">ابدأ اللعب (أساسي)</button></div>
-    <div id="view-playing" style="display:none;"><button class="btn btn-danger" onclick="playerAction('stop', false)">إنهاء اللعب</button></div>
-    <div id="view-cooldown" style="display:none;"><p style="color:var(--danger); font-weight:700;">أنت في فترة حظر إجبارية للراحة</p></div>
-    <div class="upload-box" id="upload-box" style="display:none;">
-      <p style="font-size:0.85rem; color:var(--muted);">ارفع إثبات المشي (15-30 دقيقة) للمكافأة</p>
-      <p id="upload-tries-text" style="color:var(--danger); font-size:0.75rem; margin-bottom:0.5rem;"></p>
-      <input type="file" id="proof-img" accept="image/*">
-      <button class="btn btn-white" id="btn-upload" onclick="sendProof()" style="font-size:0.8rem;">تحقق عبر AI</button>
-    </div>
-    <div class="wallet-box" id="wallet-box" style="display:none;">
-      <p style="color:var(--accent); font-size:0.8rem;">رصيد المحفظة</p>
-      <h2 id="wallet-mins">0 دقيقة</h2>
-      <button class="btn btn-white" id="btn-use-wallet" onclick="playerAction('start', true)" style="display:none;">استخدم المحفظة والعب الآن</button>
+    <div class="timer" id="p-timer">00:00:00</div>
+    <div id="p-controls"></div>
+    <div id="p-upload" style="display:none;" class="card" style="margin-top:1rem;">
+      <p>ارفع إثبات المشي (15-30 دقيقة)</p>
+      <input type="file" id="p-file" accept="image/*">
+      <button class="btn btn-white" onclick="uploadProof()">تحقق عبر AI</button>
     </div>
   </div>
 </div>
 
+<div class="screen" id="s-admin">
+  <button class="logout-btn" onclick="location.reload()">خروج</button>
+  <h1>لوحة الإدارة</h1>
+  <div id="admin-list" style="width:100%;"></div>
+</div>
+
 <script>
-let currentUser = null; 
-let syncInterval = null; 
+let currentUser = null;
 
 function toggleEye() {
   const pw = document.getElementById('pw');
@@ -79,71 +72,66 @@ async function doLogin() {
   const data = await res.json();
   if (data.ok) {
     currentUser = data;
-    if (data.isAdmin) location.reload(); // أو وجهه لصفحة الإدارة
-    else { document.getElementById('player-name').textContent = data.name; showScreen('s-player'); startSync(); }
-  } else alert("خطأ!");
+    if (data.isAdmin) { showScreen('s-admin'); startAdminSync(); }
+    else { document.getElementById('p-name').textContent = data.name; showScreen('s-player'); startPlayerSync(); }
+  } else alert("خطأ في كلمة المرور");
 }
 
-function startSync() { syncInterval = setInterval(fetchState, 1000); fetchState(); }
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
+  document.getElementById(id).classList.add('visible');
+}
 
-async function fetchState() {
-  if (!currentUser) return;
+// مزامنة اللاعب
+function startPlayerSync() { setInterval(async () => {
   const res = await fetch(`/api/status/${currentUser.index}`);
   const data = await res.json();
-  if (data.ok) updatePlayerUI(data.state, data.global);
-}
-
-function updatePlayerUI(state, global) {
-  const sText = document.getElementById('player-status-text');
-  const timer = document.getElementById('player-timer');
-  const wallet = document.getElementById('wallet-box');
-  const upload = document.getElementById('upload-box');
+  const controls = document.getElementById('p-controls');
+  const timer = document.getElementById('p-timer');
+  const upload = document.getElementById('p-upload');
   
-  wallet.style.display = 'block';
-  document.getElementById('wallet-mins').textContent = state.wallet + " دقيقة";
-  document.getElementById('upload-tries-text').textContent = `متبقي ${state.uploadTries} محاولات`;
-
-  if (state.status === 'idle') {
-    if (global && global.isOccupied && global.occupiedBy !== currentUser.name) {
-      sText.textContent = `⚠️ الجهاز مشغول من قبل: ${global.occupiedBy}`;
+  controls.innerHTML = '';
+  if (data.state.status === 'idle') {
+    if (data.global.isOccupied && data.global.occupiedBy !== currentUser.name) {
       timer.textContent = "مشغول";
       upload.style.display = 'block';
     } else {
-      sText.textContent = "مستعد للعب";
       timer.textContent = "02:00:00";
-      document.getElementById('view-idle').style.display = 'block';
-      document.getElementById('btn-use-wallet').style.display = state.wallet > 0 ? 'block' : 'none';
+      controls.innerHTML = '<button class="btn btn-white" onclick="action(\'start\')">بدأ اللعب (أساسي)</button>';
+      if (data.state.wallet > 0) controls.innerHTML += `<button class="btn btn-white" onclick="action(\'start\', true)">استخدام المحفظة (${data.state.wallet}د)</button>`;
     }
-  } else if (state.status === 'playing') {
-    document.getElementById('view-playing').style.display = 'block';
-    timer.textContent = fmt(Math.max(0, Math.ceil((state.endTime - Date.now())/1000)));
-  } else if (state.status === 'cooldown') {
-    document.getElementById('view-cooldown').style.display = 'block';
+  } else if (data.state.status === 'playing') {
+    timer.textContent = "جاري اللعب";
+    controls.innerHTML = '<button class="btn btn-white" onclick="action(\'stop\')">إنهاء اللعب</button>';
+  } else {
+    timer.textContent = "حظر راحة";
     upload.style.display = 'block';
-    timer.textContent = fmt(Math.max(0, Math.ceil((state.cooldownUntil - Date.now())/1000)));
   }
+}, 1000); }
+
+async function action(type, wallet = false) {
+  await fetch('/api/action', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ idx: currentUser.index, action: type, useWallet: wallet }) });
 }
 
-async function playerAction(action, useWallet) {
-  if (useWallet && !confirm("استهلاك رصيد المحفظة؟")) return;
-  await fetch('/api/action', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ idx: currentUser.index, action, useWallet }) });
-}
+// مزامنة المسؤول
+function startAdminSync() { setInterval(async () => {
+  const res = await fetch('/api/admin/users');
+  const data = await res.json();
+  const list = document.getElementById('admin-list');
+  list.innerHTML = '';
+  data.users.forEach(u => {
+    list.innerHTML += `<div class="admin-card">
+      <b>${u.name}</b> - حالة: ${u.state.status} | محفظة: ${u.state.wallet}د
+      <button class="btn btn-white" onclick="adminAction(${u.index}, 'unban')">فك الحظر</button>
+    </div>`;
+  });
+}, 1000); }
 
-async function sendProof() {
-  const file = document.getElementById('proof-img').files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const res = await fetch('/api/proof', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ brotherIndex: currentUser.index, image: e.target.result }) });
-    const data = await res.json();
-    alert(data.approved ? "✅ قُبلت!" : "❌ رُفضت!");
-  };
-  reader.readAsDataURL(file);
+async function adminAction(idx, act) {
+  await fetch('/api/admin/action', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ idx, action: act }) });
 }
 
 function fmt(s) { return String(Math.floor(s/3600)).padStart(2,'0')+":"+String(Math.floor((s%3600)/60)).padStart(2,'0')+":"+String(s%60).padStart(2,'0'); }
-function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible')); document.getElementById(id).classList.add('visible'); }
-function logout() { location.reload(); }
 </script>
 </body>
 </html>
