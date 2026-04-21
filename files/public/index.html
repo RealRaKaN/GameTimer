@@ -7,155 +7,315 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
   :root { --card: rgba(10, 10, 10, 0.9); --border: #fff; --text: #fff; --muted: #aaa; --accent: #00ff88; --danger: #ff4444; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
   body { 
     background: linear-gradient(rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.85)), url('bg.jpg') center/cover fixed;
-    color: var(--text); font-family: 'Cairo'; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0;
+    color: var(--text); font-family: 'Cairo'; 
+    display: flex; flex-direction: column; align-items: center; justify-content: center; 
+    min-height: 100vh; padding: 1rem; 
   }
+  
   .screen { display: none; width: 100%; max-width: 420px; flex-direction: column; align-items: center; }
-  .visible { display: flex !important; animation: fadeIn 0.3s ease; }
+  .screen.visible { display: flex !important; animation: fadeIn 0.3s ease; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  .card { background: var(--card); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; padding: 2rem; width: 100%; text-align: center; backdrop-filter: blur(5px); }
+  
+  .card { 
+    background: var(--card); border: 1px solid rgba(255, 255, 255, 0.2); 
+    border-radius: 20px; padding: 2rem; width: 100%; text-align: center; margin-bottom: 1rem;
+    backdrop-filter: blur(5px);
+  }
+  
+  h1 { font-size: 2rem; font-weight: 900; margin-bottom: 0.5rem; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+  
   .pw-wrap { position: relative; width: 100%; margin-bottom: 1rem; }
-  input { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; color: #fff; text-align: center; font-size: 1.2rem; outline: none; }
-  .eye-btn { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; }
-  .btn { width: 100%; padding: 1rem; border-radius: 10px; font-weight: 700; cursor: pointer; border: 1px solid var(--border); margin-top: 0.5rem; transition: 0.2s; }
+  input[type="password"], input[type="text"] { 
+    width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border); 
+    border-radius: 10px; padding: 1rem; padding-left: 3rem; 
+    color: #fff; font-family: 'Cairo'; text-align: center; font-size: 1.2rem; outline: none;
+  }
+  .eye-btn {
+    position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--muted); font-size: 1.5rem; 
+    cursor: pointer; transition: 0.2s;
+  }
+  .eye-btn:hover { color: #fff; }
+
+  input[type="file"] { font-size: 0.8rem; margin-bottom: 1rem; width: 100%; }
+  
+  .btn { width: 100%; padding: 1rem; border-radius: 10px; font-family: 'Cairo'; font-weight: 700; cursor: pointer; transition: 0.2s; border: 1px solid var(--border); font-size: 1rem; margin-top: 0.5rem; }
   .btn-white { background: #fff; color: #000; }
-  .timer { font-size: 3.5rem; font-weight: 900; margin: 1rem 0; direction: ltr; }
-  .logout-btn { position: absolute; top: 1rem; left: 1rem; padding: 0.5rem 1rem; background: rgba(0,0,0,0.8); border: 1px solid #fff; border-radius: 20px; color: #fff; cursor: pointer; z-index: 100; }
-  .admin-card { border: 1px solid #333; padding: 1rem; border-radius: 10px; margin-top: 1rem; text-align: right; background: rgba(255,255,255,0.05); }
+  .btn-black { background: #000; color: #fff; }
+  .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+  .btn:hover:not(:disabled) { opacity: 0.8; transform: translateY(-2px); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  
+  .timer { font-size: 3.5rem; font-weight: 900; margin: 1rem 0; direction: ltr; text-shadow: 0 0 15px rgba(255,255,255,0.2); }
+  .wallet-box { border: 1px dashed var(--accent); background: rgba(0,255,136,0.05); padding: 1rem; border-radius: 10px; margin: 1rem 0; }
+  .upload-box { border: 1px solid #333; padding: 1rem; border-radius: 10px; margin-top: 1rem; background: rgba(0,0,0,0.6); }
+  
+  .admin-card { border: 1px solid #333; border-radius: 10px; padding: 1rem; margin-bottom: 1rem; text-align: right; background: rgba(0,0,0,0.8); }
+  .admin-title { font-size: 1.2rem; font-weight: 900; border-bottom: 1px solid #333; padding-bottom: 0.5rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between;}
+  .status-badge { font-size: 0.8rem; padding: 2px 8px; border-radius: 5px; background: #333; }
+  .admin-grid { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
+  .admin-grid .btn { padding: 0.5rem; font-size: 0.85rem; margin: 0; }
+  
+  .logout-btn { position: absolute; top: 1rem; left: 1rem; padding: 0.5rem 1rem; font-size: 0.8rem; border-radius: 20px; background: rgba(0,0,0,0.8); border: 1px solid #fff; color: #fff; cursor: pointer; z-index: 999; }
 </style>
 </head>
 <body>
 
 <div class="screen visible" id="s-login">
   <h1>GAME STATION</h1>
+  <p class="subtitle">أدخل كلمة المرور للمتابعة</p>
   <div class="card">
     <div class="pw-wrap">
-      <input type="password" id="pw" placeholder="كلمة المرور">
-      <button class="eye-btn" onclick="toggleEye()">👁</button>
+      <input type="password" id="pw" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="eye-btn" onclick="toggleEye()" id="eye-icon">👁</button>
     </div>
-    <button class="btn btn-white" onclick="doLogin()">دخول</button>
+    <button class="btn btn-white" id="login-btn" onclick="doLogin()">دخول</button>
   </div>
 </div>
 
 <div class="screen" id="s-player">
-  <button class="logout-btn" onclick="location.reload()">خروج</button>
-  <h1 id="p-name">اللاعب</h1>
+  <button class="logout-btn" onclick="logout()">تسجيل خروج</button>
+  <h1 id="player-name">اللاعب</h1>
+  <p class="subtitle" id="player-status-text" style="transition: color 0.3s;">جاري المزامنة...</p>
+  
   <div class="card">
-    <div class="timer" id="p-timer">02:00:00</div>
-    <div id="p-controls"></div>
-    <div id="p-upload" style="display:none; margin-top:1rem;">
-      <p style="font-size:0.8rem; color:var(--muted)">ارفع إثبات المشي للمكافأة</p>
-      <input type="file" id="p-file" accept="image/*">
-      <button class="btn btn-white" onclick="uploadProof()">تحقق عبر AI</button>
+    <div class="timer" id="player-timer" style="transition: color 0.3s;">00:00:00</div>
+    
+    <div id="view-idle" style="display:none;">
+      <button class="btn btn-white" onclick="playerAction('start', false)">ابدأ اللعب (أساسي)</button>
+    </div>
+    
+    <div id="view-playing" style="display:none;">
+      <button class="btn btn-danger" onclick="playerAction('stop', false)">إنهاء اللعب (دخول للراحة)</button>
+    </div>
+    
+    <div id="view-cooldown" style="display:none;">
+      <p style="color:var(--danger); font-weight:700; margin-bottom:1rem;">أنت في فترة حظر إجبارية للراحة</p>
+    </div>
+
+    <div class="upload-box" id="upload-box" style="display:none;">
+      <p style="font-size:0.85rem; color:var(--muted); margin-bottom:0.5rem;">ارفع إثبات المشي (15-30 دقيقة) للمكافأة</p>
+      <p id="upload-tries-text" style="font-size:0.75rem; color:#ff4444; margin-bottom:1rem; font-weight:700;"></p>
+      <input type="file" id="proof-img" accept="image/*">
+      <button class="btn btn-black" id="btn-upload" onclick="sendProof()">تحقق عبر الذكاء الاصطناعي</button>
+    </div>
+    
+    <div class="wallet-box" id="wallet-box" style="display:none;">
+      <p style="color:var(--accent); font-size:0.8rem;">رصيد المحفظة الإضافي</p>
+      <h2 id="wallet-mins" style="color:#fff;">0 دقيقة</h2>
+      <button class="btn btn-white" style="margin-top:0.5rem; font-size:0.85rem;" onclick="playerAction('start', true)" id="btn-use-wallet">استخدم المحفظة والعب الآن</button>
     </div>
   </div>
 </div>
 
-<div class="screen" id="s-admin">
-  <button class="logout-btn" onclick="location.reload()">خروج</button>
-  <h1>لوحة الإدارة</h1>
-  <div id="admin-list" style="width:100%;"></div>
+<div class="screen" id="s-admin" style="max-width: 500px;">
+  <button class="logout-btn" onclick="logout()">تسجيل خروج</button>
+  <h1 style="color:var(--danger)">لوحة الإدارة</h1>
+  <p class="subtitle">تحكم كامل باللاعبين</p>
+  <div id="admin-users-container"></div>
 </div>
 
 <script>
-let currentUser = null;
-let syncTask = null;
+let currentUser = null; 
+let syncInterval = null; 
 
 function toggleEye() {
-  const pw = document.getElementById('pw');
-  pw.type = pw.type === 'password' ? 'text' : 'password';
-}
-
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
-  const target = document.getElementById(id);
-  if(target) target.classList.add('visible');
+  const pwInput = document.getElementById('pw');
+  if (pwInput.type === 'password') {
+    pwInput.type = 'text';
+    document.getElementById('eye-icon').style.color = '#fff';
+  } else {
+    pwInput.type = 'password';
+    document.getElementById('eye-icon').style.color = 'var(--muted)';
+  }
 }
 
 async function doLogin() {
   const pw = document.getElementById('pw').value;
-  const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ password: pw }) });
-  const data = await res.json();
-  if (data.ok) {
-    currentUser = data;
-    if (data.isAdmin) { showScreen('s-admin'); startAdminSync(); }
-    else { document.getElementById('p-name').textContent = data.name; showScreen('s-player'); startPlayerSync(); }
-  } else alert("خطأ في كلمة المرور");
-}
+  document.getElementById('login-btn').disabled = true;
 
-function startPlayerSync() {
-  syncTask = setInterval(async () => {
-    const res = await fetch(`/api/status/${currentUser.index}`);
+  try {
+    const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ password: pw }) });
     const data = await res.json();
-    const controls = document.getElementById('p-controls');
-    const timer = document.getElementById('p-timer');
-    const upload = document.getElementById('p-upload');
-    
-    controls.innerHTML = '';
-    if (data.state.status === 'idle') {
-      if (data.global.isOccupied && data.global.occupiedBy !== currentUser.name) {
-        timer.textContent = "مشغول";
-        upload.style.display = 'block';
+
+    if (data.ok) {
+      currentUser = data;
+      document.getElementById('pw').value = '';
+      
+      if (data.isAdmin) {
+        showScreen('s-admin');
+        startSync(); 
       } else {
-        timer.textContent = "02:00:00";
-        controls.innerHTML = '<button class="btn btn-white" onclick="action(\'start\', false)">بدء اللعب الأساسي</button>';
-        if (data.state.wallet > 0) controls.innerHTML += `<button class="btn btn-white" onclick="action(\'start\', true)">رصيد المحفظة (${data.state.wallet}د)</button>`;
-        upload.style.display = 'none';
+        document.getElementById('player-name').textContent = data.name;
+        showScreen('s-player');
+        startSync(); 
       }
-    } else if (data.state.status === 'playing') {
-      const left = Math.max(0, Math.ceil((data.state.endTime - Date.now())/1000));
-      timer.textContent = fmt(left);
-      controls.innerHTML = '<button class="btn btn-white" onclick="action(\'stop\')">إنهاء اللعب</button>';
-      upload.style.display = 'none';
-    } else {
-      const left = Math.max(0, Math.ceil((data.state.cooldownUntil - Date.now())/1000));
-      timer.textContent = fmt(left);
-      upload.style.display = 'block';
+    } else { 
+      alert("كلمة المرور خاطئة!"); 
     }
-  }, 1000);
+  } catch(e) {
+    alert("حدث خطأ في الاتصال بالخادم.");
+  }
+  document.getElementById('login-btn').disabled = false;
 }
 
-function startAdminSync() {
-  syncTask = setInterval(async () => {
+function logout() {
+  currentUser = null;
+  if(syncInterval) clearInterval(syncInterval);
+  showScreen('s-login');
+}
+
+function startSync() {
+  if (syncInterval) clearInterval(syncInterval);
+  syncInterval = setInterval(fetchState, 1000);
+  fetchState(); 
+}
+
+async function fetchState() {
+  if (!currentUser) return;
+  if (currentUser.isAdmin) {
     const res = await fetch('/api/admin/users');
     const data = await res.json();
-    const list = document.getElementById('admin-list');
-    list.innerHTML = '';
-    data.users.forEach(u => {
-      list.innerHTML += `<div class="admin-card">
-        <b>${u.name}</b> | محفظة: ${u.state.wallet}د | حالة: ${u.state.status}
-        <button class="btn btn-white" style="padding:5px; font-size:0.7rem;" onclick="adminAction(${u.index}, 'unban')">فك الحظر</button>
-      </div>`;
-    });
-  }, 1000);
+    if (data.ok) renderAdminPanel(data.users);
+  } else {
+    const res = await fetch(`/api/status/${currentUser.index}`);
+    const data = await res.json();
+    if (data.ok) updatePlayerUI(data.state, data.global);
+  }
 }
 
-async function action(type, wallet) {
-  await fetch('/api/action', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ idx: currentUser.index, action: type, useWallet: wallet }) });
+function updatePlayerUI(state, global) {
+  document.getElementById('view-idle').style.display = 'none';
+  document.getElementById('view-playing').style.display = 'none';
+  document.getElementById('view-cooldown').style.display = 'none';
+  document.getElementById('upload-box').style.display = 'none';
+  
+  document.getElementById('wallet-box').style.display = 'block';
+  document.getElementById('wallet-mins').textContent = state.wallet + " دقيقة";
+
+  const btnUpload = document.getElementById('btn-upload');
+  document.getElementById('upload-tries-text').textContent = `(متبقي ${state.uploadTries} محاولات)`;
+  if (state.uploadTries <= 0) {
+    btnUpload.disabled = true;
+    btnUpload.textContent = "نفدت المحاولات";
+  } else {
+    btnUpload.disabled = false;
+    btnUpload.textContent = "تحقق عبر الذكاء الاصطناعي";
+  }
+
+  if (state.status === 'idle') {
+    if (global && global.isOccupied && global.occupiedBy !== currentUser.name) {
+      document.getElementById('player-status-text').textContent = `⚠️ الجهاز مشغول حالياً من قبل: ${global.occupiedBy}`;
+      document.getElementById('player-status-text').style.color = "var(--danger)";
+      document.getElementById('player-timer').textContent = "مشغول";
+      document.getElementById('player-timer').style.color = "var(--danger)";
+      document.getElementById('btn-use-wallet').style.display = 'none';
+      document.getElementById('upload-box').style.display = 'block';
+    } else {
+      document.getElementById('player-status-text').textContent = "مستعد للعب";
+      document.getElementById('player-status-text').style.color = "var(--muted)";
+      document.getElementById('player-timer').textContent = "02:00:00";
+      document.getElementById('player-timer').style.color = "#fff";
+      document.getElementById('view-idle').style.display = 'block';
+      document.getElementById('btn-use-wallet').style.display = (state.wallet > 0) ? 'block' : 'none';
+    }
+  } 
+  else if (state.status === 'playing') {
+    document.getElementById('btn-use-wallet').style.display = 'none';
+    document.getElementById('player-status-text').textContent = "جلسة نشطة";
+    document.getElementById('player-status-text').style.color = "var(--accent)";
+    document.getElementById('player-timer').style.color = "var(--accent)";
+    document.getElementById('view-playing').style.display = 'block';
+    let secs = Math.max(0, Math.ceil((state.endTime - Date.now()) / 1000));
+    document.getElementById('player-timer').textContent = fmt(secs);
+  } 
+  else if (state.status === 'cooldown') {
+    document.getElementById('btn-use-wallet').style.display = 'none';
+    document.getElementById('player-status-text').textContent = "فترة راحة (حظر)";
+    document.getElementById('player-status-text').style.color = "var(--danger)";
+    document.getElementById('player-timer').style.color = "var(--danger)";
+    document.getElementById('view-cooldown').style.display = 'block';
+    document.getElementById('upload-box').style.display = 'block'; 
+    let secs = Math.max(0, Math.ceil((state.cooldownUntil - Date.now()) / 1000));
+    document.getElementById('player-timer').textContent = fmt(secs);
+  }
 }
 
-async function adminAction(idx, act) {
-  await fetch('/api/admin/action', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ idx, action: act }) });
+async function playerAction(action, useWallet) {
+  if (useWallet && !confirm("استهلاك رصيد المحفظة واللعب الآن؟")) return;
+  await fetch('/api/action', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ idx: currentUser.index, action, useWallet }) });
+  fetchState();
 }
 
-async function uploadProof() {
-  const file = document.getElementById('p-file').files[0];
-  if (!file) return alert("اختر صورة");
+async function sendProof() {
+  const file = document.getElementById('proof-img').files[0];
+  if (!file) return alert('الرجاء اختيار الصورة');
+  
+  const btn = document.getElementById('btn-upload');
+  btn.textContent = "جاري التحليل...";
+  btn.disabled = true;
+
   const reader = new FileReader();
   reader.onload = async (e) => {
     const res = await fetch('/api/proof', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ brotherIndex: currentUser.index, image: e.target.result }) });
     const data = await res.json();
-    alert(data.approved ? "تم قبول الصورة!" : "تم رفض الصورة");
+    
+    if (data.ok) {
+      if (data.approved) alert('✅ قُبلت الصورة وتمت إضافة ساعتين لمحفظتك!');
+      else alert(`❌ رفضت الصورة بواسطة الذكاء الاصطناعي.`);
+    } else {
+      alert(data.error || 'حدث خطأ غير معروف.');
+    }
+    
+    document.getElementById('proof-img').value = '';
+    fetchState();
   };
   reader.readAsDataURL(file);
 }
 
-function fmt(s) { 
-  const h = Math.floor(s/3600); 
-  const m = Math.floor((s%3600)/60); 
-  const sc = s%60;
-  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`; 
+function renderAdminPanel(users) {
+  const container = document.getElementById('admin-users-container');
+  container.innerHTML = ''; 
+  
+  users.forEach(u => {
+    let statusText = u.state.status === 'idle' ? 'مستعد' : u.state.status === 'playing' ? 'يلعب الآن' : 'في فترة الراحة';
+    let timeText = '00:00:00';
+    if (u.state.status === 'playing') timeText = fmt(Math.max(0, Math.ceil((u.state.endTime - Date.now())/1000)));
+    if (u.state.status === 'cooldown') timeText = fmt(Math.max(0, Math.ceil((u.state.cooldownUntil - Date.now())/1000)));
+
+    container.innerHTML += `
+      <div class="admin-card">
+        <div class="admin-title">
+          <span>${u.name} (محفظة: ${u.state.wallet}د | محاولات: ${u.state.uploadTries})</span>
+          <span class="status-badge">${statusText}</span>
+        </div>
+        <p style="color:var(--muted); font-size:0.9rem; margin-bottom:10px;">الوقت المتبقي: ${timeText}</p>
+        <div class="admin-grid">
+          <button class="btn btn-white" onclick="adminAction(${u.index}, 'unban')">فك الحظر وتصفير المحاولات</button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+async function adminAction(idx, action) {
+  await fetch('/api/admin/action', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ idx, action }) });
+  fetchState();
+}
+
+function fmt(s) {
+  const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); const sc = s % 60;
+  return String(h).padStart(2,'0') + ":" + String(m).padStart(2,'0') + ":" + String(sc).padStart(2,'0');
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
+  document.getElementById(id).classList.add('visible');
 }
 </script>
 </body>
