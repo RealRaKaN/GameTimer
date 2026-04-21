@@ -1,8 +1,8 @@
 const express = require("express");
-const path    = require("path");
-const app     = express();
+const path = require("path");
+const app = express();
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' })); // زيادة الحد لضمان استقبال الصور الكبيرة
 app.use(express.static(path.join(__dirname, "public")));
 
 /* ════════════ الإعدادات ════════════ */
@@ -17,8 +17,8 @@ const CONFIG = {
     { name: "اياد", password: "ee123", index: 1 }, 
   ],
 
-  limitMinutes: 120, 
-  cooldownHours: 2,  
+  limitMinutes: 120, // ساعتان
+  cooldownHours: 2,  // حظر ساعتان
 };
 
 const playerStates = {};
@@ -27,12 +27,28 @@ CONFIG.brothers.forEach((b, i) => {
 });
 /* ════════════════════════════════════════════ */
 
+// ─── وظائف التيليجرام المحسنة ───
+async function sendTelegramText(text) {
+  try {
+    const url = `https://api.telegram.org/bot${CONFIG.telegramBotToken}/sendMessage`;
+    await fetch(url, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: CONFIG.telegramGroupId, text: text }),
+    });
+  } catch (error) { console.error("خطأ في إرسال التيليجرام:", error); }
+}
+
+// ─── تحديث حالة اللاعب تلقائياً ───
 function updatePlayerState(idx) {
   const state = playerStates[idx];
+  const brother = CONFIG.brothers[idx];
+  
   if (state.status === 'playing' && Date.now() >= state.endTime) {
     state.status = 'cooldown';
     state.cooldownUntil = Date.now() + (CONFIG.cooldownHours * 3600 * 1000);
+    sendTelegramText(`🚨 انتهى وقت ${brother.name} ودخل في فترة حظر إجبارية لمدة ساعتين.`);
   }
+  
   if (state.status === 'cooldown' && Date.now() >= state.cooldownUntil) {
     state.status = 'idle';
     state.uploadTries = 3; 
@@ -42,14 +58,18 @@ function updatePlayerState(idx) {
 function getOccupiedStatus() {
   for (let i = 0; i < CONFIG.brothers.length; i++) {
     updatePlayerState(i);
-    if (playerStates[i].status === 'playing') return { isOccupied: true, occupiedBy: CONFIG.brothers[i].name };
+    if (playerStates[i].status === 'playing') {
+      return { isOccupied: true, occupiedBy: CONFIG.brothers[i].name };
+    }
   }
   return { isOccupied: false, occupiedBy: null };
 }
 
+// ─── مسارات API ───
 app.post("/api/login", (req, res) => {
   const { password } = req.body;
   if (password === CONFIG.adminPassword) return res.json({ ok: true, isAdmin: true });
+
   const idx = CONFIG.brothers.findIndex(b => b.password === password);
   if (idx === -1) return res.json({ ok: false });
   res.json({ ok: true, isAdmin: false, index: idx, name: CONFIG.brothers[idx].name });
@@ -62,29 +82,39 @@ app.get("/api/status/:idx", (req, res) => {
   res.json({ ok: true, state: playerStates[idx], global: getOccupiedStatus() });
 });
 
-app.post("/api/action", (req, res) => {
+app.post("/api/action", async (req, res) => {
   const { idx, action, useWallet } = req.body;
   const state = playerStates[idx];
+  const brother = CONFIG.brothers[idx];
+
   if (action === 'start') {
     const globalStatus = getOccupiedStatus();
-    if (globalStatus.isOccupied && globalStatus.occupiedBy !== CONFIG.brothers[idx].name) return res.json({ ok: false });
-    let mins = useWallet ? state.wallet : CONFIG.limitMinutes;
-    if (useWallet) state.wallet = 0;
+    if (globalStatus.isOccupied && globalStatus.occupiedBy !== brother.name) {
+      return res.json({ ok: false, error: "الجهاز مشغول" });
+    }
+    let mins = CONFIG.limitMinutes;
+    if (useWallet) { mins = state.wallet; state.wallet = 0; }
     state.status = 'playing';
     state.endTime = Date.now() + (mins * 60 * 1000);
-  } else if (action === 'stop') {
+    await sendTelegramText(`🎮 ${brother.name} بدأ اللعب (${useWallet ? 'من محفظة المكافأة' : 'الوقت الأساسي'}).`);
+  } 
+  else if (action === 'stop') {
     state.status = 'cooldown';
     state.cooldownUntil = Date.now() + (CONFIG.cooldownHours * 3600 * 1000);
+    await sendTelegramText(`🛑 ${brother.name} أنهى اللعب مبكراً ودخل الحظر.`);
   }
   res.json({ ok: true });
 });
 
 app.post("/api/proof", async (req, res) => {
   const { brotherIndex, image } = req.body;
+  const brother = CONFIG.brothers[brotherIndex];
   const state = playerStates[brotherIndex];
-  if (state.uploadTries <= 0) return res.json({ ok: false });
-  state.uploadTries--;
   
+  if (state.uploadTries <= 0) return res.json({ ok: false, error: 'استنفدت المحاولات' });
+  state.uploadTries -= 1;
+  
+  let approved = false;
   try {
     const orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -92,20 +122,36 @@ app.post("/api/proof", async (req, res) => {
       body: JSON.stringify({
         model: "openai/gpt-4o-mini",
         messages: [{ role: "user", content: [
-          { type: "text", text: "هل تظهر الصورة مشياً بين 15-30 دقيقة؟ أجب بـ نعم فقط للقبول." },
+          { type: "text", text: "أنت نظام تدقيق آلي صارم. هذه الصورة يجب أن تكون لقطة شاشة حقيقية لتطبيق رياضي. تأكد أن مدة النشاط تتراوح بين 15 و 30 دقيقة. أجب بكلمة 'نعم' فقط للقبول، أو 'لا' للرفض." },
           { type: "image_url", image_url: { url: image } }
         ]}]
       })
     });
     const orData = await orRes.json();
-    if (orData.choices[0].message.content.includes("نعم")) {
-      state.wallet += 120;
-      return res.json({ ok: true, approved: true });
+    if (orData.choices[0].message.content.includes("نعم") || orData.choices[0].message.content.includes("Yes")) {
+      approved = true;
+      state.wallet += 120; // إضافة ساعتين
     }
-  } catch (e) {}
-  res.json({ ok: true, approved: false });
+  } catch (e) { console.error("OpenRouter Error:", e); }
+
+  // إرسال الصورة لتيليجرام
+  try {
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+    const blob = new Blob([Buffer.from(base64Data, 'base64')], { type: 'image/jpeg' });
+    const formData = new FormData();
+    formData.append('chat_id', CONFIG.telegramGroupId);
+    formData.append('photo', blob, 'proof.jpg');
+    formData.append('caption', `🏃 إثبات نشاط: ${brother.name}\n🤖 قرار الذكاء الاصطناعي: ${approved ? '✅ مقبول (+ساعتين)' : '❌ مرفوض'}\n🔄 المحاولات المتبقية: ${state.uploadTries}`);
+    await fetch(`https://api.telegram.org/bot${CONFIG.telegramBotToken}/sendPhoto`, { method: 'POST', body: formData });
+  } catch (e) { 
+    console.error("خطأ في إرسال الصورة لتيليجرام:", e);
+    await sendTelegramText(`تم رفع إثبات من ${brother.name}. النتيجة: ${approved ? '✅ مقبول' : '❌ مرفوض'}. (فشل إرسال الصورة للمجموعة)`);
+  }
+
+  res.json({ ok: true, approved, triesLeft: state.uploadTries });
 });
 
+// ─── مسارات الإدارة ───
 app.get("/api/admin/users", (req, res) => {
   const users = CONFIG.brothers.map((b, i) => {
     updatePlayerState(i);
@@ -114,14 +160,33 @@ app.get("/api/admin/users", (req, res) => {
   res.json({ ok: true, users });
 });
 
-app.post("/api/admin/action", (req, res) => {
+app.post("/api/admin/action", async (req, res) => {
   const { idx, action } = req.body;
-  if (action === 'unban') {
-    playerStates[idx].status = 'idle';
-    playerStates[idx].cooldownUntil = 0;
+  const state = playerStates[idx];
+  const brother = CONFIG.brothers[idx];
+
+  if (action === 'add_time') {
+    if (state.status === 'playing') state.endTime += 10 * 60 * 1000;
+    await sendTelegramText(`⚙️ الإدارة: إضافة 10 دقائق لـ ${brother.name}`);
+  } 
+  else if (action === 'end_time') {
+    state.status = 'cooldown';
+    state.cooldownUntil = Date.now() + (CONFIG.cooldownHours * 3600 * 1000);
+    await sendTelegramText(`⚙️ الإدارة: إنهاء جلسة ${brother.name} فوراً`);
+  } 
+  else if (action === 'ban_1h') {
+    state.status = 'cooldown';
+    state.cooldownUntil = Date.now() + (3600 * 1000);
+    await sendTelegramText(`⚙️ الإدارة: حظر ${brother.name} لمدة ساعة`);
+  } 
+  else if (action === 'unban') {
+    state.status = 'idle';
+    state.cooldownUntil = 0;
+    state.uploadTries = 3;
+    await sendTelegramText(`⚙️ الإدارة: فك الحظر وتصفير المحاولات لـ ${brother.name}`);
   }
   res.json({ ok: true });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`الموقع يعمل على المنفذ ${PORT}`));
