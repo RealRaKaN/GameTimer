@@ -12,17 +12,17 @@
     color: var(--text); font-family: 'Cairo'; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0;
   }
   .screen { display: none; width: 100%; max-width: 420px; flex-direction: column; align-items: center; }
-  .screen.visible { display: flex; animation: fadeIn 0.3s ease; }
+  .visible { display: flex !important; animation: fadeIn 0.3s ease; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   .card { background: var(--card); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; padding: 2rem; width: 100%; text-align: center; backdrop-filter: blur(5px); }
   .pw-wrap { position: relative; width: 100%; margin-bottom: 1rem; }
-  input[type="password"], input[type="text"] { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; color: #fff; text-align: center; font-size: 1.2rem; outline: none; }
-  .eye-btn { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.2rem; }
-  .btn { width: 100%; padding: 1rem; border-radius: 10px; font-weight: 700; cursor: pointer; border: 1px solid var(--border); margin-top: 0.5rem; }
+  input { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; color: #fff; text-align: center; font-size: 1.2rem; outline: none; }
+  .eye-btn { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; }
+  .btn { width: 100%; padding: 1rem; border-radius: 10px; font-weight: 700; cursor: pointer; border: 1px solid var(--border); margin-top: 0.5rem; transition: 0.2s; }
   .btn-white { background: #fff; color: #000; }
   .timer { font-size: 3.5rem; font-weight: 900; margin: 1rem 0; direction: ltr; }
-  .logout-btn { position: absolute; top: 1rem; left: 1rem; padding: 0.5rem 1rem; background: rgba(0,0,0,0.8); border: 1px solid #fff; border-radius: 20px; color: #fff; cursor: pointer; }
-  .admin-card { border: 1px solid #333; padding: 1rem; border-radius: 10px; margin-top: 1rem; text-align: right; }
+  .logout-btn { position: absolute; top: 1rem; left: 1rem; padding: 0.5rem 1rem; background: rgba(0,0,0,0.8); border: 1px solid #fff; border-radius: 20px; color: #fff; cursor: pointer; z-index: 100; }
+  .admin-card { border: 1px solid #333; padding: 1rem; border-radius: 10px; margin-top: 1rem; text-align: right; background: rgba(255,255,255,0.05); }
 </style>
 </head>
 <body>
@@ -42,10 +42,10 @@
   <button class="logout-btn" onclick="location.reload()">خروج</button>
   <h1 id="p-name">اللاعب</h1>
   <div class="card">
-    <div class="timer" id="p-timer">00:00:00</div>
+    <div class="timer" id="p-timer">02:00:00</div>
     <div id="p-controls"></div>
-    <div id="p-upload" style="display:none;" class="card" style="margin-top:1rem;">
-      <p>ارفع إثبات المشي (15-30 دقيقة)</p>
+    <div id="p-upload" style="display:none; margin-top:1rem;">
+      <p style="font-size:0.8rem; color:var(--muted)">ارفع إثبات المشي للمكافأة</p>
       <input type="file" id="p-file" accept="image/*">
       <button class="btn btn-white" onclick="uploadProof()">تحقق عبر AI</button>
     </div>
@@ -60,10 +60,17 @@
 
 <script>
 let currentUser = null;
+let syncTask = null;
 
 function toggleEye() {
   const pw = document.getElementById('pw');
   pw.type = pw.type === 'password' ? 'text' : 'password';
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
+  const target = document.getElementById(id);
+  if(target) target.classList.add('visible');
 }
 
 async function doLogin() {
@@ -77,61 +84,79 @@ async function doLogin() {
   } else alert("خطأ في كلمة المرور");
 }
 
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
-  document.getElementById(id).classList.add('visible');
+function startPlayerSync() {
+  syncTask = setInterval(async () => {
+    const res = await fetch(`/api/status/${currentUser.index}`);
+    const data = await res.json();
+    const controls = document.getElementById('p-controls');
+    const timer = document.getElementById('p-timer');
+    const upload = document.getElementById('p-upload');
+    
+    controls.innerHTML = '';
+    if (data.state.status === 'idle') {
+      if (data.global.isOccupied && data.global.occupiedBy !== currentUser.name) {
+        timer.textContent = "مشغول";
+        upload.style.display = 'block';
+      } else {
+        timer.textContent = "02:00:00";
+        controls.innerHTML = '<button class="btn btn-white" onclick="action(\'start\', false)">بدء اللعب الأساسي</button>';
+        if (data.state.wallet > 0) controls.innerHTML += `<button class="btn btn-white" onclick="action(\'start\', true)">رصيد المحفظة (${data.state.wallet}د)</button>`;
+        upload.style.display = 'none';
+      }
+    } else if (data.state.status === 'playing') {
+      const left = Math.max(0, Math.ceil((data.state.endTime - Date.now())/1000));
+      timer.textContent = fmt(left);
+      controls.innerHTML = '<button class="btn btn-white" onclick="action(\'stop\')">إنهاء اللعب</button>';
+      upload.style.display = 'none';
+    } else {
+      const left = Math.max(0, Math.ceil((data.state.cooldownUntil - Date.now())/1000));
+      timer.textContent = fmt(left);
+      upload.style.display = 'block';
+    }
+  }, 1000);
 }
 
-// مزامنة اللاعب
-function startPlayerSync() { setInterval(async () => {
-  const res = await fetch(`/api/status/${currentUser.index}`);
-  const data = await res.json();
-  const controls = document.getElementById('p-controls');
-  const timer = document.getElementById('p-timer');
-  const upload = document.getElementById('p-upload');
-  
-  controls.innerHTML = '';
-  if (data.state.status === 'idle') {
-    if (data.global.isOccupied && data.global.occupiedBy !== currentUser.name) {
-      timer.textContent = "مشغول";
-      upload.style.display = 'block';
-    } else {
-      timer.textContent = "02:00:00";
-      controls.innerHTML = '<button class="btn btn-white" onclick="action(\'start\')">بدأ اللعب (أساسي)</button>';
-      if (data.state.wallet > 0) controls.innerHTML += `<button class="btn btn-white" onclick="action(\'start\', true)">استخدام المحفظة (${data.state.wallet}د)</button>`;
-    }
-  } else if (data.state.status === 'playing') {
-    timer.textContent = "جاري اللعب";
-    controls.innerHTML = '<button class="btn btn-white" onclick="action(\'stop\')">إنهاء اللعب</button>';
-  } else {
-    timer.textContent = "حظر راحة";
-    upload.style.display = 'block';
-  }
-}, 1000); }
+function startAdminSync() {
+  syncTask = setInterval(async () => {
+    const res = await fetch('/api/admin/users');
+    const data = await res.json();
+    const list = document.getElementById('admin-list');
+    list.innerHTML = '';
+    data.users.forEach(u => {
+      list.innerHTML += `<div class="admin-card">
+        <b>${u.name}</b> | محفظة: ${u.state.wallet}د | حالة: ${u.state.status}
+        <button class="btn btn-white" style="padding:5px; font-size:0.7rem;" onclick="adminAction(${u.index}, 'unban')">فك الحظر</button>
+      </div>`;
+    });
+  }, 1000);
+}
 
-async function action(type, wallet = false) {
+async function action(type, wallet) {
   await fetch('/api/action', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ idx: currentUser.index, action: type, useWallet: wallet }) });
 }
-
-// مزامنة المسؤول
-function startAdminSync() { setInterval(async () => {
-  const res = await fetch('/api/admin/users');
-  const data = await res.json();
-  const list = document.getElementById('admin-list');
-  list.innerHTML = '';
-  data.users.forEach(u => {
-    list.innerHTML += `<div class="admin-card">
-      <b>${u.name}</b> - حالة: ${u.state.status} | محفظة: ${u.state.wallet}د
-      <button class="btn btn-white" onclick="adminAction(${u.index}, 'unban')">فك الحظر</button>
-    </div>`;
-  });
-}, 1000); }
 
 async function adminAction(idx, act) {
   await fetch('/api/admin/action', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ idx, action: act }) });
 }
 
-function fmt(s) { return String(Math.floor(s/3600)).padStart(2,'0')+":"+String(Math.floor((s%3600)/60)).padStart(2,'0')+":"+String(s%60).padStart(2,'0'); }
+async function uploadProof() {
+  const file = document.getElementById('p-file').files[0];
+  if (!file) return alert("اختر صورة");
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const res = await fetch('/api/proof', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ brotherIndex: currentUser.index, image: e.target.result }) });
+    const data = await res.json();
+    alert(data.approved ? "تم قبول الصورة!" : "تم رفض الصورة");
+  };
+  reader.readAsDataURL(file);
+}
+
+function fmt(s) { 
+  const h = Math.floor(s/3600); 
+  const m = Math.floor((s%3600)/60); 
+  const sc = s%60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`; 
+}
 </script>
 </body>
 </html>
