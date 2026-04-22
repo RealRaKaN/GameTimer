@@ -1,206 +1,322 @@
-const express = require("express");
-const path = require("path");
-const app = express();
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GAME STATION</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root { --card: rgba(10, 10, 10, 0.9); --border: #fff; --text: #fff; --muted: #aaa; --accent: #00ff88; --danger: #ff4444; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body { 
+    background: linear-gradient(rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.85)), url('bg.jpg') center/cover fixed;
+    color: var(--text); font-family: 'Cairo'; 
+    display: flex; flex-direction: column; align-items: center; justify-content: center; 
+    min-height: 100vh; padding: 1rem; 
+  }
+  
+  .screen { display: none; width: 100%; max-width: 450px; flex-direction: column; align-items: center; }
+  .screen.visible { display: flex !important; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  
+  .card { 
+    background: var(--card); border: 1px solid rgba(255, 255, 255, 0.2); 
+    border-radius: 20px; padding: 2rem; width: 100%; text-align: center; margin-bottom: 1rem;
+    backdrop-filter: blur(5px);
+  }
+  
+  h1 { font-size: 2.2rem; font-weight: 900; margin-bottom: 0.5rem; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+  
+  .pw-wrap { position: relative; width: 100%; margin-bottom: 1rem; }
+  input[type="password"], input[type="text"] { 
+    width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border); 
+    border-radius: 10px; padding: 1rem; padding-left: 3rem; 
+    color: #fff; font-family: 'Cairo'; text-align: center; font-size: 1.2rem; outline: none;
+  }
+  .eye-btn {
+    position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; transition: 0.2s;
+  }
+  .eye-btn:hover { color: #fff; }
 
-app.use(express.json({ limit: '50mb' })); 
-app.use(express.static(path.join(__dirname, "public")));
+  input[type="file"] { font-size: 0.8rem; margin-bottom: 1rem; width: 100%; }
+  
+  .btn { width: 100%; padding: 1rem; border-radius: 10px; font-family: 'Cairo'; font-weight: 700; cursor: pointer; transition: 0.2s; border: 1px solid var(--border); font-size: 1rem; margin-top: 0.5rem; }
+  .btn-white { background: #fff; color: #000; }
+  .btn-black { background: #000; color: #fff; }
+  .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+  .btn:hover:not(:disabled) { opacity: 0.8; transform: translateY(-2px); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  
+  .timer { font-size: 3.5rem; font-weight: 900; margin: 1rem 0; direction: ltr; text-shadow: 0 0 15px rgba(255,255,255,0.2); }
+  .wallet-box { border: 1px dashed var(--accent); background: rgba(0,255,136,0.05); padding: 1rem; border-radius: 10px; margin: 1rem 0; }
+  .upload-box { border: 1px solid #333; padding: 1.5rem; border-radius: 10px; margin-top: 1rem; background: rgba(0,0,0,0.6); }
+  
+  .admin-card { border: 1px solid #333; border-radius: 10px; padding: 1rem; margin-bottom: 1rem; text-align: right; background: rgba(0,0,0,0.8); }
+  .admin-title { font-size: 1.1rem; font-weight: 900; border-bottom: 1px solid #333; padding-bottom: 0.5rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between;}
+  .status-badge { font-size: 0.8rem; padding: 3px 8px; border-radius: 5px; background: #333; }
+  .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .admin-grid .btn { padding: 0.5rem; font-size: 0.85rem; margin: 0; }
+  
+  .logout-btn { position: absolute; top: 1rem; left: 1rem; padding: 0.5rem 1rem; font-size: 0.8rem; border-radius: 20px; background: rgba(0,0,0,0.8); border: 1px solid #fff; color: #fff; cursor: pointer; z-index: 999; }
+</style>
+</head>
+<body>
 
-/* ════════════ الإعدادات ════════════ */
-const CONFIG = {
-  telegramBotToken: "8709026102:AAGi8aDydKYRFR0d8g-Hk2lMRCnmSIQUemI", 
-  telegramGroupId:  "-1003704558008", 
-  openRouterKey:    "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",
-  adminPassword:    "admin", 
+<div class="screen visible" id="s-login">
+  <h1>GAME STATION</h1>
+  <p class="subtitle">أدخل كلمة المرور للمتابعة</p>
+  <div class="card">
+    <div class="pw-wrap">
+      <input type="password" id="pw" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="eye-btn" onclick="toggleEye()">👁</button>
+    </div>
+    <button class="btn btn-white" id="login-btn" onclick="doLogin()">دخول</button>
+  </div>
+</div>
 
-  brothers: [
-    { name: "عبدالملك", password: "aa1234", index: 0 }, 
-    { name: "اياد", password: "ee123", index: 1 }, 
-  ],
+<div class="screen" id="s-player">
+  <button class="logout-btn" onclick="location.reload()">تسجيل خروج</button>
+  <h1 id="player-name">اللاعب</h1>
+  <p class="subtitle" id="player-status-text" style="transition: color 0.3s;">جاري المزامنة...</p>
+  
+  <div class="card">
+    <div class="timer" id="player-timer">00:00:00</div>
+    
+    <div id="p-controls" style="display:none;"></div>
+    
+    <div id="view-playing" style="display:none;">
+      <button class="btn btn-danger" onclick="playerAction('stop', false)">إنهاء اللعب مبكراً (دخول للراحة)</button>
+    </div>
+    
+    <div id="view-cooldown" style="display:none;">
+      <p style="color:var(--danger); font-weight:700; margin-bottom:1rem;">أنت في فترة راحة إجبارية</p>
+    </div>
 
-  limitMinutes: 120, // ساعتان
-  cooldownHours: 2,  // حظر ساعتان
-};
+    <div class="upload-box" id="upload-box" style="display:none;">
+      <p style="font-size:0.9rem; color:var(--muted); margin-bottom:0.5rem;">ارفع إثبات المشي (15-30 دقيقة) للمكافأة</p>
+      <p id="upload-tries-text" style="font-size:0.8rem; color:#ff4444; margin-bottom:1rem; font-weight:700;"></p>
+      <input type="file" id="proof-img" accept="image/*">
+      <button class="btn btn-black" id="btn-upload" onclick="sendProof()">تحقق عبر الذكاء الاصطناعي</button>
+    </div>
+  </div>
+</div>
 
-const playerStates = {};
-CONFIG.brothers.forEach((b, i) => {
-  playerStates[i] = { 
-    status: 'idle', 
-    endTime: 0, 
-    cooldownUntil: 0, 
-    wallet: 0, 
-    uploadTries: 3,
-    playedBase: false // 🔴 جديد: متغير يسجل هل لعب وقته الأساسي أم لا
-  };
-});
-/* ════════════════════════════════════════════ */
+<div class="screen" id="s-admin" style="max-width: 550px;">
+  <button class="logout-btn" onclick="location.reload()">تسجيل خروج</button>
+  <h1 style="color:var(--danger)">لوحة الإدارة</h1>
+  <p class="subtitle">تحكم كامل باللاعبين</p>
+  <div id="admin-users-container" style="width: 100%;"></div>
+</div>
 
-async function sendTelegramText(text) {
+<script>
+let currentUser = null; 
+let syncInterval = null; 
+
+function toggleEye() {
+  const pwInput = document.getElementById('pw');
+  if (pwInput.type === 'password') {
+    pwInput.type = 'text';
+    document.querySelector('.eye-btn').style.color = '#fff';
+  } else {
+    pwInput.type = 'password';
+    document.querySelector('.eye-btn').style.color = 'var(--muted)';
+  }
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
+  document.getElementById(id).classList.add('visible');
+}
+
+async function doLogin() {
+  const pw = document.getElementById('pw').value;
+  if (!pw) return;
+  document.getElementById('login-btn').disabled = true;
+
   try {
-    const url = `https://api.telegram.org/bot${CONFIG.telegramBotToken}/sendMessage`;
-    await fetch(url, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: CONFIG.telegramGroupId, text: text }),
-    });
-  } catch (error) { console.error(error); }
+    const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ password: pw }) });
+    const data = await res.json();
+
+    if (data.ok) {
+      currentUser = data;
+      document.getElementById('pw').value = '';
+      if (data.isAdmin) {
+        showScreen('s-admin');
+        startSync(); 
+      } else {
+        document.getElementById('player-name').textContent = data.name;
+        showScreen('s-player');
+        startSync(); 
+      }
+    } else { alert("كلمة المرور خاطئة!"); }
+  } catch(e) { alert("حدث خطأ في الاتصال."); }
+  document.getElementById('login-btn').disabled = false;
 }
 
-function updatePlayerState(idx) {
-  const state = playerStates[idx];
-  const brother = CONFIG.brothers[idx];
-  
-  if (state.status === 'playing' && Date.now() >= state.endTime) {
-    state.status = 'cooldown';
-    state.cooldownUntil = Date.now() + (CONFIG.cooldownHours * 3600 * 1000);
-    sendTelegramText(`🚨 انتهى وقت ${brother.name} ودخل في فترة حظر إجبارية لمدة ساعتين.`);
-  }
-  
-  if (state.status === 'cooldown' && Date.now() >= state.cooldownUntil) {
-    state.status = 'idle';
-    state.uploadTries = 3; 
+function startSync() {
+  if (syncInterval) clearInterval(syncInterval);
+  syncInterval = setInterval(fetchState, 1000);
+  fetchState(); 
+}
+
+async function fetchState() {
+  if (!currentUser) return;
+  if (currentUser.isAdmin) {
+    const res = await fetch('/api/admin/users');
+    const data = await res.json();
+    if (data.ok) renderAdminPanel(data.users);
+  } else {
+    const res = await fetch(`/api/status/${currentUser.index}`);
+    const data = await res.json();
+    if (data.ok) updatePlayerUI(data.state, data.global);
   }
 }
 
-function getOccupiedStatus() {
-  for (let i = 0; i < CONFIG.brothers.length; i++) {
-    updatePlayerState(i);
-    if (playerStates[i].status === 'playing') {
-      return { isOccupied: true, occupiedBy: CONFIG.brothers[i].name };
+function updatePlayerUI(state, global) {
+  document.getElementById('p-controls').style.display = 'none';
+  document.getElementById('view-playing').style.display = 'none';
+  document.getElementById('view-cooldown').style.display = 'none';
+  document.getElementById('upload-box').style.display = 'none';
+
+  const btnUpload = document.getElementById('btn-upload');
+  document.getElementById('upload-tries-text').textContent = `(متبقي ${state.uploadTries} محاولات)`;
+  if (state.uploadTries <= 0) {
+    btnUpload.disabled = true;
+    btnUpload.textContent = "نفدت المحاولات للأسف";
+  } else {
+    btnUpload.disabled = false;
+    btnUpload.textContent = "تحقق عبر الذكاء الاصطناعي";
+  }
+
+  if (state.status === 'idle') {
+    if (global && global.isOccupied && global.occupiedBy !== currentUser.name) {
+      document.getElementById('player-status-text').textContent = `⚠️ الجهاز مشغول حالياً من قبل: ${global.occupiedBy}`;
+      document.getElementById('player-status-text').style.color = "var(--danger)";
+      document.getElementById('player-timer').textContent = "مشغول";
+      document.getElementById('player-timer').style.color = "var(--danger)";
+      document.getElementById('upload-box').style.display = 'block';
+    } else {
+      document.getElementById('player-status-text').textContent = "مستعد للعب";
+      document.getElementById('player-status-text').style.color = "var(--muted)";
+      document.getElementById('player-timer').style.color = "#fff";
+      document.getElementById('p-controls').style.display = 'block';
+
+      let controlsHTML = '';
+      
+      // إذا لم يلعب الوقت الأساسي، أظهر له الزر
+      if (!state.playedBase) {
+        document.getElementById('player-timer').textContent = "02:00:00";
+        controlsHTML += `<button class="btn btn-white" onclick="playerAction('start', false)">ابدأ اللعب الأساسي (ساعتين)</button>`;
+      } else {
+        // إذا لعبه وانتهى، يظهر له هذا التنبيه
+        document.getElementById('player-timer').textContent = "مستهلك";
+        controlsHTML += `<p style="color:var(--danger); font-size:0.9rem; margin-bottom:1rem; font-weight:bold;">لقد استهلكت وقتك الأساسي لهذا اليوم</p>`;
+      }
+
+      // إذا كان يملك محفظة، يظهر زر إضافي مخصص للمحفظة
+      if (state.wallet > 0) {
+        controlsHTML += `<button class="btn btn-black" style="border-color:var(--accent); color:var(--accent);" onclick="playerAction('start', true)">استخدم المحفظة (${state.wallet}د) والعب الآن</button>`;
+      }
+
+      document.getElementById('p-controls').innerHTML = controlsHTML;
     }
+  } 
+  else if (state.status === 'playing') {
+    document.getElementById('player-status-text').textContent = "جلسة نشطة";
+    document.getElementById('player-status-text').style.color = "var(--accent)";
+    document.getElementById('player-timer').style.color = "var(--accent)";
+    document.getElementById('view-playing').style.display = 'block';
+    let secs = Math.max(0, Math.ceil((state.endTime - Date.now()) / 1000));
+    document.getElementById('player-timer').textContent = fmt(secs);
+  } 
+  else if (state.status === 'cooldown') {
+    document.getElementById('player-status-text').textContent = "فترة راحة إجبارية";
+    document.getElementById('player-status-text').style.color = "var(--danger)";
+    document.getElementById('player-timer').style.color = "var(--danger)";
+    document.getElementById('view-cooldown').style.display = 'block';
+    document.getElementById('upload-box').style.display = 'block'; 
+    let secs = Math.max(0, Math.ceil((state.cooldownUntil - Date.now()) / 1000));
+    document.getElementById('player-timer').textContent = fmt(secs);
   }
-  return { isOccupied: false, occupiedBy: null };
 }
 
-app.post("/api/login", (req, res) => {
-  const { password } = req.body;
-  if (password === CONFIG.adminPassword) return res.json({ ok: true, isAdmin: true });
-  const idx = CONFIG.brothers.findIndex(b => b.password === password);
-  if (idx === -1) return res.json({ ok: false });
-  res.json({ ok: true, isAdmin: false, index: idx, name: CONFIG.brothers[idx].name });
-});
+async function playerAction(action, useWallet) {
+  if (useWallet && !confirm("هل أنت متأكد من استهلاك رصيد المحفظة وبدء اللعب؟")) return;
+  await fetch('/api/action', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ idx: currentUser.index, action, useWallet }) });
+  fetchState();
+}
 
-app.get("/api/status/:idx", (req, res) => {
-  const idx = req.params.idx;
-  if (!playerStates[idx]) return res.json({ ok: false });
-  updatePlayerState(idx);
-  res.json({ ok: true, state: playerStates[idx], global: getOccupiedStatus() });
-});
+async function sendProof() {
+  const file = document.getElementById('proof-img').files[0];
+  if (!file) return alert('الرجاء اختيار الصورة أولاً');
+  
+  const btn = document.getElementById('btn-upload');
+  btn.textContent = "جاري التحليل والرفع...";
+  btn.disabled = true;
 
-app.post("/api/action", async (req, res) => {
-  const { idx, action, useWallet } = req.body;
-  const state = playerStates[idx];
-  const brother = CONFIG.brothers[idx];
-
-  if (action === 'start') {
-    const globalStatus = getOccupiedStatus();
-    if (globalStatus.isOccupied && globalStatus.occupiedBy !== brother.name) {
-      return res.json({ ok: false, error: "الجهاز مشغول" });
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const res = await fetch('/api/proof', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ brotherIndex: currentUser.index, image: e.target.result }) });
+    const data = await res.json();
+    
+    if (data.ok) {
+      if (data.approved) alert('✅ قُبلت الصورة! تمت إضافة ساعتين لمحفظتك.');
+      else alert('❌ رفضت الصورة من قبل الذكاء الاصطناعي.');
+    } else {
+      alert(data.error || 'حدث خطأ.');
     }
     
-    // 🔴 جديد: منع اللاعب من اللعب الأساسي إذا كان قد استهلكه
-    if (!useWallet && state.playedBase) {
-      return res.json({ ok: false, error: "لقد استنفدت وقتك الأساسي" });
-    }
+    document.getElementById('proof-img').value = '';
+    fetchState();
+  };
+  reader.readAsDataURL(file);
+}
 
-    let mins = CONFIG.limitMinutes;
-    if (useWallet) { 
-      mins = state.wallet; 
-      state.wallet = 0; 
-    } else {
-      state.playedBase = true; // تسجيل أنه استهلك الوقت الأساسي
-    }
-
-    state.status = 'playing';
-    state.endTime = Date.now() + (mins * 60 * 1000);
-    await sendTelegramText(`🎮 ${brother.name} بدأ اللعب (${useWallet ? 'بالمحفظة' : 'الوقت الأساسي'}).`);
-  } 
-  else if (action === 'stop') {
-    state.status = 'cooldown';
-    state.cooldownUntil = Date.now() + (CONFIG.cooldownHours * 3600 * 1000);
-    await sendTelegramText(`🛑 ${brother.name} أنهى اللعب ودخل الحظر.`);
-  }
-  res.json({ ok: true });
-});
-
-app.post("/api/proof", async (req, res) => {
-  const { brotherIndex, image } = req.body;
-  const brother = CONFIG.brothers[brotherIndex];
-  const state = playerStates[brotherIndex];
+// ─── بناء لوحة الإدارة بكامل الأزرار ───
+function renderAdminPanel(users) {
+  const container = document.getElementById('admin-users-container');
+  container.innerHTML = ''; 
   
-  if (state.uploadTries <= 0) return res.json({ ok: false, error: 'استنفدت المحاولات' });
-  state.uploadTries -= 1;
-  
-  let approved = false;
-  try {
-    const orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${CONFIG.openRouterKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
-        messages: [{ role: "user", content: [
-          { type: "text", text: "أنت نظام تدقيق آلي صارم. هذه الصورة لقطة شاشة حقيقية لتطبيق رياضي. تأكد أن مدة النشاط تتراوح بين 15 و 30 دقيقة. أجب بكلمة 'نعم' فقط للقبول، أو 'لا' للرفض." },
-          { type: "image_url", image_url: { url: image } }
-        ]}]
-      })
-    });
-    const orData = await orRes.json();
-    if (orData.choices[0].message.content.includes("نعم") || orData.choices[0].message.content.includes("Yes")) {
-      approved = true;
-      state.wallet += 120; 
-    }
-  } catch (e) { console.error(e); }
+  users.forEach(u => {
+    let statusText = u.state.status === 'idle' ? 'مستعد' : u.state.status === 'playing' ? 'يلعب الآن' : 'في فترة الحظر';
+    let baseText = u.state.playedBase ? '❌ استهلك الأساسي' : '✅ الأساسي متاح';
+    let timeText = '00:00:00';
+    if (u.state.status === 'playing') timeText = fmt(Math.max(0, Math.ceil((u.state.endTime - Date.now())/1000)));
+    if (u.state.status === 'cooldown') timeText = fmt(Math.max(0, Math.ceil((u.state.cooldownUntil - Date.now())/1000)));
 
-  try {
-    const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-    const blob = new Blob([Buffer.from(base64Data, 'base64')], { type: 'image/jpeg' });
-    const formData = new FormData();
-    formData.append('chat_id', CONFIG.telegramGroupId);
-    formData.append('photo', blob, 'proof.jpg');
-    formData.append('caption', `🏃 إثبات نشاط: ${brother.name}\n🤖 القرار: ${approved ? '✅ مقبول (+ساعتين)' : '❌ مرفوض'}\n🔄 المتبقي: ${state.uploadTries}`);
-    await fetch(`https://api.telegram.org/bot${CONFIG.telegramBotToken}/sendPhoto`, { method: 'POST', body: formData });
-  } catch (e) { }
-
-  res.json({ ok: true, approved, triesLeft: state.uploadTries });
-});
-
-// Admin
-app.get("/api/admin/users", (req, res) => {
-  const users = CONFIG.brothers.map((b, i) => {
-    updatePlayerState(i);
-    return { index: i, name: b.name, state: playerStates[i] };
+    container.innerHTML += `
+      <div class="admin-card">
+        <div class="admin-title">
+          <span>${u.name} (محفظة: ${u.state.wallet}د)</span>
+          <span class="status-badge">${statusText}</span>
+        </div>
+        <p style="color:var(--muted); font-size:0.8rem; margin-bottom:5px;">الأساسي: ${baseText} | المحاولات: ${u.state.uploadTries}</p>
+        <p style="color:var(--muted); font-size:0.9rem; margin-bottom:10px;">الوقت المتبقي: ${timeText}</p>
+        
+        <div class="admin-grid">
+          <button class="btn btn-white" onclick="adminAction(${u.index}, 'add_time')" ${u.state.status !== 'playing' ? 'disabled' : ''}>+10 دقائق</button>
+          <button class="btn btn-danger" onclick="adminAction(${u.index}, 'end_time')" ${u.state.status !== 'playing' ? 'disabled' : ''}>إنهاء اللعب</button>
+          <button class="btn btn-danger" onclick="adminAction(${u.index}, 'ban_1h')">حظر 1 ساعة</button>
+          <button class="btn btn-white" onclick="adminAction(${u.index}, 'unban')">فك الحظر</button>
+          <button class="btn btn-black" style="grid-column: span 2; border-color: var(--accent); color: var(--accent);" onclick="adminAction(${u.index}, 'new_day')">بدء يوم جديد (إتاحة الوقت الأساسي)</button>
+        </div>
+      </div>
+    `;
   });
-  res.json({ ok: true, users });
-});
+}
 
-app.post("/api/admin/action", async (req, res) => {
-  const { idx, action } = req.body;
-  const state = playerStates[idx];
-  const brother = CONFIG.brothers[idx];
+async function adminAction(idx, action) {
+  await fetch('/api/admin/action', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ idx, action }) });
+  fetchState();
+}
 
-  if (action === 'add_time') {
-    if (state.status === 'playing') state.endTime += 10 * 60 * 1000;
-  } 
-  else if (action === 'end_time') {
-    state.status = 'cooldown';
-    state.cooldownUntil = Date.now() + (CONFIG.cooldownHours * 3600 * 1000);
-  } 
-  else if (action === 'ban_1h') {
-    state.status = 'cooldown';
-    state.cooldownUntil = Date.now() + (3600 * 1000);
-  } 
-  else if (action === 'unban') {
-    state.status = 'idle';
-    state.cooldownUntil = 0;
-    state.uploadTries = 3;
-  }
-  else if (action === 'new_day') { // 🔴 جديد: زر يتيح للإدارة بدء يوم جديد وتصفير العداد
-    state.status = 'idle';
-    state.cooldownUntil = 0;
-    state.uploadTries = 3;
-    state.playedBase = false; 
-    await sendTelegramText(`⚙️ الإدارة: بدء يوم جديد لـ ${brother.name} (الوقت الأساسي متاح الآن)`);
-  }
-  res.json({ ok: true });
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`الموقع يعمل على المنفذ ${PORT}`));
+function fmt(s) {
+  const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); const sc = s % 60;
+  return String(h).padStart(2,'0') + ":" + String(m).padStart(2,'0') + ":" + String(sc).padStart(2,'0');
+}
+</script>
+</body>
+</html>
