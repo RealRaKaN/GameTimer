@@ -2,7 +2,7 @@ const express = require("express");
 const path = require("path");
 const app = express();
 
-app.use(express.json({ limit: '50mb' })); // زيادة الحد لضمان استقبال الصور الكبيرة
+app.use(express.json({ limit: '50mb' })); 
 app.use(express.static(path.join(__dirname, "public")));
 
 /* ════════════ الإعدادات ════════════ */
@@ -23,11 +23,17 @@ const CONFIG = {
 
 const playerStates = {};
 CONFIG.brothers.forEach((b, i) => {
-  playerStates[i] = { status: 'idle', endTime: 0, cooldownUntil: 0, wallet: 0, uploadTries: 3 };
+  playerStates[i] = { 
+    status: 'idle', 
+    endTime: 0, 
+    cooldownUntil: 0, 
+    wallet: 0, 
+    uploadTries: 3,
+    playedBase: false // 🔴 جديد: متغير يسجل هل لعب وقته الأساسي أم لا
+  };
 });
 /* ════════════════════════════════════════════ */
 
-// ─── وظائف التيليجرام المحسنة ───
 async function sendTelegramText(text) {
   try {
     const url = `https://api.telegram.org/bot${CONFIG.telegramBotToken}/sendMessage`;
@@ -35,10 +41,9 @@ async function sendTelegramText(text) {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: CONFIG.telegramGroupId, text: text }),
     });
-  } catch (error) { console.error("خطأ في إرسال التيليجرام:", error); }
+  } catch (error) { console.error(error); }
 }
 
-// ─── تحديث حالة اللاعب تلقائياً ───
 function updatePlayerState(idx) {
   const state = playerStates[idx];
   const brother = CONFIG.brothers[idx];
@@ -65,11 +70,9 @@ function getOccupiedStatus() {
   return { isOccupied: false, occupiedBy: null };
 }
 
-// ─── مسارات API ───
 app.post("/api/login", (req, res) => {
   const { password } = req.body;
   if (password === CONFIG.adminPassword) return res.json({ ok: true, isAdmin: true });
-
   const idx = CONFIG.brothers.findIndex(b => b.password === password);
   if (idx === -1) return res.json({ ok: false });
   res.json({ ok: true, isAdmin: false, index: idx, name: CONFIG.brothers[idx].name });
@@ -92,16 +95,28 @@ app.post("/api/action", async (req, res) => {
     if (globalStatus.isOccupied && globalStatus.occupiedBy !== brother.name) {
       return res.json({ ok: false, error: "الجهاز مشغول" });
     }
+    
+    // 🔴 جديد: منع اللاعب من اللعب الأساسي إذا كان قد استهلكه
+    if (!useWallet && state.playedBase) {
+      return res.json({ ok: false, error: "لقد استنفدت وقتك الأساسي" });
+    }
+
     let mins = CONFIG.limitMinutes;
-    if (useWallet) { mins = state.wallet; state.wallet = 0; }
+    if (useWallet) { 
+      mins = state.wallet; 
+      state.wallet = 0; 
+    } else {
+      state.playedBase = true; // تسجيل أنه استهلك الوقت الأساسي
+    }
+
     state.status = 'playing';
     state.endTime = Date.now() + (mins * 60 * 1000);
-    await sendTelegramText(`🎮 ${brother.name} بدأ اللعب (${useWallet ? 'من محفظة المكافأة' : 'الوقت الأساسي'}).`);
+    await sendTelegramText(`🎮 ${brother.name} بدأ اللعب (${useWallet ? 'بالمحفظة' : 'الوقت الأساسي'}).`);
   } 
   else if (action === 'stop') {
     state.status = 'cooldown';
     state.cooldownUntil = Date.now() + (CONFIG.cooldownHours * 3600 * 1000);
-    await sendTelegramText(`🛑 ${brother.name} أنهى اللعب مبكراً ودخل الحظر.`);
+    await sendTelegramText(`🛑 ${brother.name} أنهى اللعب ودخل الحظر.`);
   }
   res.json({ ok: true });
 });
@@ -122,7 +137,7 @@ app.post("/api/proof", async (req, res) => {
       body: JSON.stringify({
         model: "openai/gpt-4o-mini",
         messages: [{ role: "user", content: [
-          { type: "text", text: "أنت نظام تدقيق آلي صارم. هذه الصورة يجب أن تكون لقطة شاشة حقيقية لتطبيق رياضي. تأكد أن مدة النشاط تتراوح بين 15 و 30 دقيقة. أجب بكلمة 'نعم' فقط للقبول، أو 'لا' للرفض." },
+          { type: "text", text: "أنت نظام تدقيق آلي صارم. هذه الصورة لقطة شاشة حقيقية لتطبيق رياضي. تأكد أن مدة النشاط تتراوح بين 15 و 30 دقيقة. أجب بكلمة 'نعم' فقط للقبول، أو 'لا' للرفض." },
           { type: "image_url", image_url: { url: image } }
         ]}]
       })
@@ -130,28 +145,24 @@ app.post("/api/proof", async (req, res) => {
     const orData = await orRes.json();
     if (orData.choices[0].message.content.includes("نعم") || orData.choices[0].message.content.includes("Yes")) {
       approved = true;
-      state.wallet += 120; // إضافة ساعتين
+      state.wallet += 120; 
     }
-  } catch (e) { console.error("OpenRouter Error:", e); }
+  } catch (e) { console.error(e); }
 
-  // إرسال الصورة لتيليجرام
   try {
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
     const blob = new Blob([Buffer.from(base64Data, 'base64')], { type: 'image/jpeg' });
     const formData = new FormData();
     formData.append('chat_id', CONFIG.telegramGroupId);
     formData.append('photo', blob, 'proof.jpg');
-    formData.append('caption', `🏃 إثبات نشاط: ${brother.name}\n🤖 قرار الذكاء الاصطناعي: ${approved ? '✅ مقبول (+ساعتين)' : '❌ مرفوض'}\n🔄 المحاولات المتبقية: ${state.uploadTries}`);
+    formData.append('caption', `🏃 إثبات نشاط: ${brother.name}\n🤖 القرار: ${approved ? '✅ مقبول (+ساعتين)' : '❌ مرفوض'}\n🔄 المتبقي: ${state.uploadTries}`);
     await fetch(`https://api.telegram.org/bot${CONFIG.telegramBotToken}/sendPhoto`, { method: 'POST', body: formData });
-  } catch (e) { 
-    console.error("خطأ في إرسال الصورة لتيليجرام:", e);
-    await sendTelegramText(`تم رفع إثبات من ${brother.name}. النتيجة: ${approved ? '✅ مقبول' : '❌ مرفوض'}. (فشل إرسال الصورة للمجموعة)`);
-  }
+  } catch (e) { }
 
   res.json({ ok: true, approved, triesLeft: state.uploadTries });
 });
 
-// ─── مسارات الإدارة ───
+// Admin
 app.get("/api/admin/users", (req, res) => {
   const users = CONFIG.brothers.map((b, i) => {
     updatePlayerState(i);
@@ -167,23 +178,26 @@ app.post("/api/admin/action", async (req, res) => {
 
   if (action === 'add_time') {
     if (state.status === 'playing') state.endTime += 10 * 60 * 1000;
-    await sendTelegramText(`⚙️ الإدارة: إضافة 10 دقائق لـ ${brother.name}`);
   } 
   else if (action === 'end_time') {
     state.status = 'cooldown';
     state.cooldownUntil = Date.now() + (CONFIG.cooldownHours * 3600 * 1000);
-    await sendTelegramText(`⚙️ الإدارة: إنهاء جلسة ${brother.name} فوراً`);
   } 
   else if (action === 'ban_1h') {
     state.status = 'cooldown';
     state.cooldownUntil = Date.now() + (3600 * 1000);
-    await sendTelegramText(`⚙️ الإدارة: حظر ${brother.name} لمدة ساعة`);
   } 
   else if (action === 'unban') {
     state.status = 'idle';
     state.cooldownUntil = 0;
     state.uploadTries = 3;
-    await sendTelegramText(`⚙️ الإدارة: فك الحظر وتصفير المحاولات لـ ${brother.name}`);
+  }
+  else if (action === 'new_day') { // 🔴 جديد: زر يتيح للإدارة بدء يوم جديد وتصفير العداد
+    state.status = 'idle';
+    state.cooldownUntil = 0;
+    state.uploadTries = 3;
+    state.playedBase = false; 
+    await sendTelegramText(`⚙️ الإدارة: بدء يوم جديد لـ ${brother.name} (الوقت الأساسي متاح الآن)`);
   }
   res.json({ ok: true });
 });
