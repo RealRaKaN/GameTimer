@@ -85,12 +85,10 @@
   <div class="card">
     <div class="timer" id="player-timer">00:00:00</div>
     
-    <div id="view-idle" style="display:none;">
-      <button class="btn btn-white" onclick="playerAction('start', false)">ابدأ اللعب (أساسي)</button>
-    </div>
+    <div id="p-controls" style="display:none;"></div>
     
     <div id="view-playing" style="display:none;">
-      <button class="btn btn-danger" onclick="playerAction('stop', false)">إنهاء اللعب مبكراً</button>
+      <button class="btn btn-danger" onclick="playerAction('stop', false)">إنهاء اللعب مبكراً (دخول للراحة)</button>
     </div>
     
     <div id="view-cooldown" style="display:none;">
@@ -102,12 +100,6 @@
       <p id="upload-tries-text" style="font-size:0.8rem; color:#ff4444; margin-bottom:1rem; font-weight:700;"></p>
       <input type="file" id="proof-img" accept="image/*">
       <button class="btn btn-black" id="btn-upload" onclick="sendProof()">تحقق عبر الذكاء الاصطناعي</button>
-    </div>
-    
-    <div class="wallet-box" id="wallet-box" style="display:none;">
-      <p style="color:var(--accent); font-size:0.8rem;">رصيد المحفظة</p>
-      <h2 id="wallet-mins" style="color:#fff;">0 دقيقة</h2>
-      <button class="btn btn-white" style="margin-top:0.5rem; font-size:0.85rem;" onclick="playerAction('start', true)" id="btn-use-wallet">استخدم المحفظة والعب الآن</button>
     </div>
   </div>
 </div>
@@ -151,7 +143,6 @@ async function doLogin() {
     if (data.ok) {
       currentUser = data;
       document.getElementById('pw').value = '';
-      
       if (data.isAdmin) {
         showScreen('s-admin');
         startSync(); 
@@ -161,7 +152,7 @@ async function doLogin() {
         startSync(); 
       }
     } else { alert("كلمة المرور خاطئة!"); }
-  } catch(e) { alert("حدث خطأ في الاتصال بالخادم."); }
+  } catch(e) { alert("حدث خطأ في الاتصال."); }
   document.getElementById('login-btn').disabled = false;
 }
 
@@ -185,14 +176,10 @@ async function fetchState() {
 }
 
 function updatePlayerUI(state, global) {
-  document.getElementById('view-idle').style.display = 'none';
+  document.getElementById('p-controls').style.display = 'none';
   document.getElementById('view-playing').style.display = 'none';
   document.getElementById('view-cooldown').style.display = 'none';
   document.getElementById('upload-box').style.display = 'none';
-  document.getElementById('btn-use-wallet').style.display = 'none';
-  
-  document.getElementById('wallet-box').style.display = 'block';
-  document.getElementById('wallet-mins').textContent = state.wallet + " دقيقة";
 
   const btnUpload = document.getElementById('btn-upload');
   document.getElementById('upload-tries-text').textContent = `(متبقي ${state.uploadTries} محاولات)`;
@@ -214,10 +201,24 @@ function updatePlayerUI(state, global) {
     } else {
       document.getElementById('player-status-text').textContent = "مستعد للعب";
       document.getElementById('player-status-text').style.color = "var(--muted)";
-      document.getElementById('player-timer').textContent = "02:00:00";
       document.getElementById('player-timer').style.color = "#fff";
-      document.getElementById('view-idle').style.display = 'block';
-      if (state.wallet > 0) document.getElementById('btn-use-wallet').style.display = 'block';
+      document.getElementById('p-controls').style.display = 'block';
+
+      let controlsHTML = '';
+      
+      if (!state.playedBase) {
+        document.getElementById('player-timer').textContent = "02:00:00";
+        controlsHTML += `<button class="btn btn-white" onclick="playerAction('start', false)">ابدأ اللعب الأساسي (ساعتين)</button>`;
+      } else {
+        document.getElementById('player-timer').textContent = "مستهلك";
+        controlsHTML += `<p style="color:var(--danger); font-size:0.9rem; margin-bottom:1rem; font-weight:bold;">لقد استهلكت وقتك الأساسي لهذا اليوم</p>`;
+      }
+
+      if (state.wallet > 0) {
+        controlsHTML += `<button class="btn btn-black" style="border-color:var(--accent); color:var(--accent);" onclick="playerAction('start', true)">استخدم المحفظة (${state.wallet}د) والعب الآن</button>`;
+      }
+
+      document.getElementById('p-controls').innerHTML = controlsHTML;
     }
   } 
   else if (state.status === 'playing') {
@@ -271,13 +272,13 @@ async function sendProof() {
   reader.readAsDataURL(file);
 }
 
-// ─── بناء لوحة الإدارة بكامل الأزرار ───
 function renderAdminPanel(users) {
   const container = document.getElementById('admin-users-container');
   container.innerHTML = ''; 
   
   users.forEach(u => {
     let statusText = u.state.status === 'idle' ? 'مستعد' : u.state.status === 'playing' ? 'يلعب الآن' : 'في فترة الحظر';
+    let baseText = u.state.playedBase ? '❌ استهلك الأساسي' : '✅ الأساسي متاح';
     let timeText = '00:00:00';
     if (u.state.status === 'playing') timeText = fmt(Math.max(0, Math.ceil((u.state.endTime - Date.now())/1000)));
     if (u.state.status === 'cooldown') timeText = fmt(Math.max(0, Math.ceil((u.state.cooldownUntil - Date.now())/1000)));
@@ -285,16 +286,18 @@ function renderAdminPanel(users) {
     container.innerHTML += `
       <div class="admin-card">
         <div class="admin-title">
-          <span>${u.name} (محفظة: ${u.state.wallet}د | محاولات: ${u.state.uploadTries})</span>
+          <span>${u.name} (محفظة: ${u.state.wallet}د)</span>
           <span class="status-badge">${statusText}</span>
         </div>
+        <p style="color:var(--muted); font-size:0.8rem; margin-bottom:5px;">الأساسي: ${baseText} | المحاولات: ${u.state.uploadTries}</p>
         <p style="color:var(--muted); font-size:0.9rem; margin-bottom:10px;">الوقت المتبقي: ${timeText}</p>
         
         <div class="admin-grid">
           <button class="btn btn-white" onclick="adminAction(${u.index}, 'add_time')" ${u.state.status !== 'playing' ? 'disabled' : ''}>+10 دقائق</button>
           <button class="btn btn-danger" onclick="adminAction(${u.index}, 'end_time')" ${u.state.status !== 'playing' ? 'disabled' : ''}>إنهاء اللعب</button>
           <button class="btn btn-danger" onclick="adminAction(${u.index}, 'ban_1h')">حظر 1 ساعة</button>
-          <button class="btn btn-white" onclick="adminAction(${u.index}, 'unban')">فك الحظر/تصفير</button>
+          <button class="btn btn-white" onclick="adminAction(${u.index}, 'unban')">فك الحظر</button>
+          <button class="btn btn-black" style="grid-column: span 2; border-color: var(--accent); color: var(--accent);" onclick="adminAction(${u.index}, 'new_day')">بدء يوم جديد (إتاحة الوقت الأساسي)</button>
         </div>
       </div>
     `;
